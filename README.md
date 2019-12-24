@@ -1,7 +1,7 @@
 # scvis
 **Interactive** Single Cell RNA-seq Data Visualization in web browser.
 
-My colleagues would like to gene expression in cells. I'm too lazy and tired to generate new plot for each interest genes.
+My colleagues would like to explore gene expression in cells. I'm too lazy and tired to generate new plots for each interest gene.
 So, I setup a simplest web app using bokeh to help them. here is an example:
 
 ![example](template/example.png)
@@ -25,3 +25,6 @@ bokeh serve scvis
 * scipy
 
 ### TODO
+I did not find a good example to generate voilinplot in Bokeh server application. 
+However, the amazing bokeh could do this easy!  
+I wish I had time to setup high level APIs for statistical plotting for Bokeh.
