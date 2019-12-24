@@ -1,0 +1,9 @@
+.vscode
+.DS_Store
+*.idea
+*h5ad
+# vim
+.*swp
+# tests
+tests
+.pytest_cache
