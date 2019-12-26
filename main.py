@@ -61,7 +61,7 @@ umap = anndat.obsm['X_umap']
 #stats = PreText(text='', width=500)
 symbol = AutocompleteInput(completions=anndat.var_names.tolist(), 
                            title="Enter Gene Name (e.g. POU5F1 ):", value="AFP")
-select = Select(title="Legend:", value="clusters", options=['donor','group','clusters']) #options=anndat.obs_keys()
+select = Select(title="Legend:", value="group", options=['donor','group','clusters']) #options=anndat.obs_keys()
 # message box
 message = Div(text="""Input Gene Name:\n Legend Option: """, width=200, height=100)
 
@@ -87,7 +87,7 @@ catogories = sorted(anndat.obs[dd].unique().tolist())
 palette = color_palette[:len(catogories)]
 low, high = 0, 1
 ## transforms
-fcmap = factor_cmap('color', palette=palette, factors=catogories)
+fcmap = factor_cmap('color', palette=palette, factors=[str(c) for c in catogories])
 mapper = linear_cmap(field_name='umis', palette="Viridis256",
                      low=low, high=high)
 color_bar = ColorBar(color_mapper=mapper['transform'],  
@@ -214,7 +214,7 @@ def volin_change(gene, catogory, umis, bins=1000, cut=2):
     #source_vln.data = dict(xs=xs, ys=ys, color=color, xj=xj, yj=yj)
 
     volin.xaxis.ticker = FixedTicker(ticks= x_range)
-    volin.xaxis.major_label_overrides = {k: v for k, v in zip(x_range, cats)}
+    volin.xaxis.major_label_overrides = {k: str(v) for k, v in zip(x_range, cats)}
     volin.title.text = gene
 
 # set up callbacks
@@ -252,12 +252,12 @@ def factor_change():
     # select gene expression value
     umis = get_umi(anndat, gene) 
     # update factor color 
-    clusters = anndat.obs[dd].astype(str)
+    clusters = anndat.obs[dd]
     cats = sorted(clusters.unique().tolist())
-    fcmap['transform'].factors= cats
+    fcmap['transform'].factors= [ str(c) for c in cats] 
     fcmap['transform'].palette=color_palette[:len(cats)]
     ## update source data
-    source.data.update(color=clusters.tolist())
+    source.data.update(color=clusters.astype(str).tolist())
     ## update violin
     volin_change(gene, clusters, umis, bins=1000)
 
