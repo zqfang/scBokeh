@@ -20,7 +20,7 @@ from bokeh.models.glyphs import Patches
 from bokeh.models.widgets import Select, TextInput, Dropdown, AutocompleteInput, Div
 from bokeh.plotting import figure
 from bokeh.palettes import Category10, Spectral6
-from bokeh.transform import factor_cmap, factor_mark, linear_cmap
+from bokeh.transform import factor_cmap, factor_mark, linear_cmap, jitter
 from bokeh.themes import built_in_themes
 
 
@@ -29,7 +29,8 @@ DATA_DIR = dirname(__file__)
 
 @lru_cache()
 def load_h5ad():
-    fname = join(DATA_DIR, "arpkd.h5ad")
+    #fname = join(DATA_DIR, "arpkd.h5ad")
+    fname = join(DATA_DIR, "old.test.h5ad")
     return sc.read_h5ad(fname)
 
 @lru_cache()
@@ -59,14 +60,14 @@ umap = anndat.obsm['X_umap']
 # set up widgets
 #stats = PreText(text='', width=500)
 symbol = AutocompleteInput(completions=anndat.var_names.tolist(), 
-                           title="Enter Gene Name (e.g. POU5F1 ):", value="POU5F1")
-select = Select(title="Legend:", value="hash.ID", options=anndat.obs_keys())
+                           title="Enter Gene Name (e.g. POU5F1 ):", value="AFP")
+select = Select(title="Legend:", value="clusters", options=['donor','group','clusters']) #options=anndat.obs_keys()
 # message box
 message = Div(text="""Input Gene Name:\n Legend Option: """, width=200, height=100)
 
 ## setup data
-dd = "hash.ID"
-umis = get_umi(anndat, 'POU5F1')
+dd = select.value
+umis = get_umi(anndat, symbol.value)
 source = ColumnDataSource(data=dict(tSNE1=tsne[:,0].tolist(), 
                                     tSNE2=tsne[:,1].tolist(), 
                                     color=[0]*tsne.shape[0],
@@ -76,7 +77,7 @@ source = ColumnDataSource(data=dict(tSNE1=tsne[:,0].tolist(),
                                     PC1=pca[:,0].tolist(),
                                     PC2=pca[:,1].tolist(),
                                     PC3=pca[:,2].tolist(),))
-source_vln = ColumnDataSource(data=dict(xs=[],ys=[], color=[]))
+source_vln = ColumnDataSource(data=dict(xs=[],ys=[], xj=[], yj=[], color=[]))
 ## setup figures
 tools = 'reset,pan,wheel_zoom,box_select,save'
 # color_palette= godsnot_102
@@ -164,6 +165,8 @@ p2.add_layout(color_bar, 'right')
 volin = figure(plot_width=1000, plot_height=500, 
                tools = 'reset, pan,wheel_zoom, save')
 volin.patches(xs='xs', ys='ys', alpha=0.6, fill_color='color', line_color='black', source=source_vln)
+#volin.circle(x=jitter('xj', 0.4), y='yj', size=2, color='black', alpha=0.4, source=source_vln)
+
 volin.toolbar.logo = None
 volin.yaxis.axis_label = "Expression"
 
@@ -180,13 +183,12 @@ def volin_change(gene, catogory, umis, bins=1000, cut=2):
     # update axis
     cats = sorted(catogory.unique())
     x_range = (np.arange(0, len(cats)) * 3).tolist()
-    volin.xaxis.ticker = FixedTicker(ticks= x_range)
-    volin.xaxis.major_label_overrides = {k: v for k, v in zip(x_range, cats)}
-    volin.title.text = gene
     ## update data
     color = color_palette[:len(cats)]
     xs = []
     ys =  []
+    xj = []
+    yj = []
 
     for i, cat in zip(x_range, cats):
         umi = umis[catogory == cat]
@@ -205,19 +207,21 @@ def volin_change(gene, catogory, umis, bins=1000, cut=2):
         xx = np.concatenate([x, x2[::-1]]) + i
         xs.append(xx)
         ys.append(yy)
+        #xj.append([i]*len(umi))
+        #yj.append(umi)
       
     source_vln.data = dict(xs=xs, ys=ys, color=color)
+    #source_vln.data = dict(xs=xs, ys=ys, color=color, xj=xj, yj=yj)
 
-
-
+    volin.xaxis.ticker = FixedTicker(ticks= x_range)
+    volin.xaxis.major_label_overrides = {k: v for k, v in zip(x_range, cats)}
+    volin.title.text = gene
 
 # set up callbacks
 def gene_change():
     ## update text input and select attribute
     gene = symbol.value.strip()
     dd = select.value
-    if gene not in anndat.var_names: gene = "POU5F1"
-    if dd is None or dd == "" : dd = "hash.ID"
 
     message.text = "Input Gene Name: {g} \nLegend Option: {cat}".format(g=gene,cat=dd)
     # select gene expression value
@@ -243,19 +247,17 @@ def factor_change():
     ## update text input and select attribute
     gene = symbol.value.strip()
     dd = select.value
-    if gene not in anndat.var_names: gene = "POU5F1"
-    if dd is None or dd == "" : dd = "hash.ID"
-    
+ 
     message.text = "Input Gene Name: {g} \nLegend Option: {cat}".format(g=gene,cat=dd)
     # select gene expression value
     umis = get_umi(anndat, gene) 
     # update factor color 
-    clusters = anndat.obs[dd]
+    clusters = anndat.obs[dd].astype(str)
     cats = sorted(clusters.unique().tolist())
-    fcmap['transform'].factors=cats
+    fcmap['transform'].factors= cats
     fcmap['transform'].palette=color_palette[:len(cats)]
     ## update source data
-    source.data.update(color=anndat.obs[dd].tolist())
+    source.data.update(color=clusters.tolist())
     ## update violin
     volin_change(gene, clusters, umis, bins=1000)
 
