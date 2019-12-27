@@ -7,6 +7,7 @@
 #####
 from functools import lru_cache
 from os.path import dirname, join
+from itertools import chain
 import numpy as np
 import pandas as pd
 import scanpy as sc 
@@ -60,8 +61,8 @@ umap = anndat.obsm['X_umap']
 # set up widgets
 #stats = PreText(text='', width=500)
 symbol = AutocompleteInput(completions=anndat.var_names.tolist(), 
-                           title="Enter Gene Name (e.g. POU5F1 ):", value="AFP")
-select = Select(title="Legend:", value="group", options=['donor','group','clusters']) #options=anndat.obs_keys()
+                           title="Enter Gene Name (e.g. POU5F1 ):", value="PDGFRA")
+select = Select(title="Legend:", value="clusters", options=['donor','group','clusters']) #options=anndat.obs_keys()
 # message box
 message = Div(text="""Input Gene Name:\n Legend Option: """, width=200, height=100)
 
@@ -76,7 +77,9 @@ source = ColumnDataSource(data=dict(tSNE1=tsne[:,0].tolist(),
                                     UMAP2=umap[:,1].tolist(),
                                     PC1=pca[:,0].tolist(),
                                     PC2=pca[:,1].tolist(),
-                                    PC3=pca[:,2].tolist(),))
+                                    PC3=pca[:,2].tolist(),
+                                    xj=[0]*tsne.shape[0],
+                                    yj=[0]*tsne.shape[0]))
 source_vln = ColumnDataSource(data=dict(xs=[],ys=[], xj=[], yj=[], color=[]))
 ## setup figures
 tools = 'reset,pan,wheel_zoom,box_select,save'
@@ -165,7 +168,7 @@ p2.add_layout(color_bar, 'right')
 volin = figure(plot_width=1000, plot_height=500, 
                tools = 'reset, pan,wheel_zoom, save')
 volin.patches(xs='xs', ys='ys', alpha=0.6, fill_color='color', line_color='black', source=source_vln)
-#volin.circle(x=jitter('xj', 0.4), y='yj', size=2, color='black', alpha=0.4, source=source_vln)
+#volin.circle(x=jitter('xj', 1), y='yj', size=2, color='black', alpha=0.6, source=source) #
 
 volin.toolbar.logo = None
 volin.yaxis.axis_label = "Expression"
@@ -178,6 +181,12 @@ volin.ygrid.grid_line_color = "#dddddd"
 volin.axis.minor_tick_line_color = None
 volin.axis.major_tick_line_color = None
 volin.axis.axis_line_color = None
+
+
+## dotplot
+
+
+
 
 def volin_change(gene, catogory, umis, bins=1000, cut=2):
     # update axis
@@ -192,6 +201,8 @@ def volin_change(gene, catogory, umis, bins=1000, cut=2):
 
     for i, cat in zip(x_range, cats):
         umi = umis[catogory == cat]
+        xj += [i]*len(umi)
+        yj += umi.tolist()
         kde = gaussian_kde(umi) 
         # same default paramter same as seaborn.violinplot
         bw_used = kde.factor * umi.std(ddof=1) * cut
@@ -207,15 +218,15 @@ def volin_change(gene, catogory, umis, bins=1000, cut=2):
         xx = np.concatenate([x, x2[::-1]]) + i
         xs.append(xx)
         ys.append(yy)
-        #xj.append([i]*len(umi))
-        #yj.append(umi)
-      
-    source_vln.data = dict(xs=xs, ys=ys, color=color)
-    #source_vln.data = dict(xs=xs, ys=ys, color=color, xj=xj, yj=yj)
 
+
+    source.data.update(xj=xj)
+    source.data.update(yj=yj)
+    source_vln.data = dict(xs=xs, ys=ys, color=color,)
     volin.xaxis.ticker = FixedTicker(ticks= x_range)
     volin.xaxis.major_label_overrides = {k: str(v) for k, v in zip(x_range, cats)}
     volin.title.text = gene
+
 
 # set up callbacks
 def gene_change():
@@ -270,7 +281,7 @@ sb = column(symbol, select, message)
 
 series_t = row(t1, t2, sb)
 series_u = row(u1, u2, volin)
-series_p = row(p1, p2, )
+series_p = row(p1, p2)
 layout = column(series_t, series_u, series_p,)
 
 # initialize
@@ -281,3 +292,6 @@ factor_change()
 curdoc().add_root(layout)
 #curdoc.theme = 'dark_minimal'
 curdoc().title = "ARPKD"
+
+
+
