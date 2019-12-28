@@ -5,6 +5,8 @@
 # @version: 0.1
 # @time: 2019-12-21
 #####
+import logging
+
 from functools import lru_cache
 from os.path import dirname, join
 from itertools import chain
@@ -80,7 +82,7 @@ source = ColumnDataSource(data=dict(tSNE1=tsne[:,0].tolist(),
                                     PC3=pca[:,2].tolist(),
                                     xj=[0]*tsne.shape[0],
                                     yj=[0]*tsne.shape[0]))
-source_vln = ColumnDataSource(data=dict(xs=[],ys=[], xj=[], yj=[], color=[]))
+source_vln = ColumnDataSource(data=dict(xs=[],ys=[], color=[]))
 ## setup figures
 tools = 'reset,pan,wheel_zoom,box_select,save'
 # color_palette= godsnot_102
@@ -168,8 +170,8 @@ p2.add_layout(color_bar, 'right')
 volin = figure(plot_width=1000, plot_height=500, 
                tools = 'reset, pan,wheel_zoom, save')
 volin.patches(xs='xs', ys='ys', alpha=0.6, fill_color='color', line_color='black', source=source_vln)
-#volin.circle(x=jitter('xj', 1), y='yj', size=2, color='black', alpha=0.6, source=source) #
-
+# volin.circle(x=jitter('xj', 0.2, distribution='normal'), y=jitter('yj', 0.2, distribution='normal'), 
+#              size=3, color='black', alpha=0.6, source=source) #
 volin.toolbar.logo = None
 volin.yaxis.axis_label = "Expression"
 
@@ -195,7 +197,7 @@ def volin_change(gene, catogory, umis, bins=1000, cut=2):
     ## update data
     color = color_palette[:len(cats)]
     xs = []
-    ys =  []
+    ys = []
     xj = []
     yj = []
 
@@ -219,10 +221,8 @@ def volin_change(gene, catogory, umis, bins=1000, cut=2):
         xs.append(xx)
         ys.append(yy)
 
-
-    source.data.update(xj=xj)
-    source.data.update(yj=yj)
-    source_vln.data = dict(xs=xs, ys=ys, color=color,)
+    source.data.update(xj=xj, yj=yj)
+    source_vln.data.update(xs=xs, ys=ys, color=color)
     volin.xaxis.ticker = FixedTicker(ticks= x_range)
     volin.xaxis.major_label_overrides = {k: str(v) for k, v in zip(x_range, cats)}
     volin.title.text = gene
@@ -246,11 +246,13 @@ def gene_change():
     u2.title.text = gene
     t2.title.text = gene   
     ## update source data
-    source.data.update(umis=umis,)
+    source.data.update(umis=umis,)   
     
     # update volin
     clusters = anndat.obs[dd]
     volin_change(gene, clusters, umis, bins=1000)
+
+
 
 
 # set up callbacks
