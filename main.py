@@ -5,11 +5,8 @@
 # @version: 0.1
 # @time: 2019-12-21
 #####
-import logging
-
 from functools import lru_cache
 from os.path import dirname, join
-from itertools import chain
 import numpy as np
 import pandas as pd
 import scanpy as sc 
@@ -32,8 +29,8 @@ DATA_DIR = dirname(__file__)
 
 @lru_cache()
 def load_h5ad():
-    #fname = join(DATA_DIR, "arpkd.h5ad")
-    fname = join(DATA_DIR, "old.test.h5ad")
+    fname = join(DATA_DIR, "ARPKD.PAGA.intergrated.C123.final.20200108.h5ad")
+    #fname = join(DATA_DIR, "old.test.h5ad")
     return sc.read_h5ad(fname)
 
 @lru_cache()
@@ -56,15 +53,16 @@ zeileis_28 = [
  
 # load data
 anndat = load_h5ad() 
-pca = anndat.obsm['X_pca']
+#pca = anndat.obsm['X_pca']
+pca = anndat.obsm['X_draw_graph_fa']
 tsne = anndat.obsm['X_tsne']
 umap = anndat.obsm['X_umap']
 
 # set up widgets
 #stats = PreText(text='', width=500)
 symbol = AutocompleteInput(completions=anndat.var_names.tolist(), 
-                           title="Enter Gene Name (e.g. POU5F1 ):", value="PDGFRA")
-select = Select(title="Legend:", value="clusters", options=['donor','group','clusters']) #options=anndat.obs_keys()
+                           title="Enter Gene Name (e.g. POU5F1 ):", value="AFP")
+select = Select(title="Legend:", value="stage_group", options=["clusters","stage","stage_group","donor","Donor","group","res.0.6"])#options=anndat.obs_keys())
 # message box
 message = Div(text="""Input Gene Name:\n Legend Option: """, width=200, height=100)
 
@@ -77,12 +75,10 @@ source = ColumnDataSource(data=dict(tSNE1=tsne[:,0].tolist(),
                                     umis=[0]*tsne.shape[0],
                                     UMAP1=umap[:,0].tolist(), 
                                     UMAP2=umap[:,1].tolist(),
-                                    PC1=pca[:,0].tolist(),
-                                    PC2=pca[:,1].tolist(),
-                                    PC3=pca[:,2].tolist(),
-                                    xj=[0]*tsne.shape[0],
-                                    yj=[0]*tsne.shape[0]))
-source_vln = ColumnDataSource(data=dict(xs=[],ys=[], color=[]))
+                                    FA1=pca[:,0].tolist(),
+                                    FA2=pca[:,1].tolist(),))
+                                    #PC3=pca[:,2].tolist(),))
+source_vln = ColumnDataSource(data=dict(xs=[],ys=[], xj=[], yj=[], color=[]))
 ## setup figures
 tools = 'reset,pan,wheel_zoom,box_select,save'
 # color_palette= godsnot_102
@@ -119,19 +115,19 @@ u1.yaxis.axis_label = "UMAP2"
 
 u2 = figure(plot_width=550, plot_height=500, tools=tools)
 u2.toolbar.logo = None
-u2.xaxis.axis_label = "UMAP"
-u2.yaxis.axis_label = "UMAP"
+u2.xaxis.axis_label = "UMAP1"
+u2.yaxis.axis_label = "UMAP2"
 
-## PCA
-p1 = figure(plot_width=500, plot_height=500, title="PCA", tools=tools)
+## trajectory
+p1 = figure(plot_width=500, plot_height=500, title="Trajectory Inference", tools=tools)
 p1.toolbar.logo = None
-p1.xaxis.axis_label = "PC1"
-p1.yaxis.axis_label = "PC2"
+p1.xaxis.axis_label = "FA1"
+p1.yaxis.axis_label = "FA2"
 
 p2 = figure(plot_width=550, plot_height=500, tools=tools)
 p2.toolbar.logo = None
-p2.xaxis.axis_label = "PC1"
-p2.yaxis.axis_label = "PC2"
+p2.xaxis.axis_label = "FA1"
+p2.yaxis.axis_label = "FA2"
 
 ########### clustering plots ##################
 ## tSNE
@@ -141,7 +137,7 @@ t1.circle('tSNE1', 'tSNE2', size=3, source=source, legend_field="color", color= 
 u1.circle('UMAP1', 'UMAP2', size=3, source=source, legend_field="color", color= fcmap,
             selection_color="orange", alpha=0.6, nonselection_alpha=0.1, selection_alpha=0.4)
 ## PCA
-p1.circle('PC1', 'PC2', size=3, source=source, legend_field="color", color= fcmap,
+p1.circle('FA1', 'FA2', size=3, source=source, legend_field="color", color= fcmap,
             selection_color="orange", alpha=0.6, nonselection_alpha=0.1, selection_alpha=0.4)   
 
 ###### gene expression plots ##################
@@ -159,7 +155,7 @@ u2.scatter('UMAP1', 'UMAP2', size=3, source=source,
             nonselection_alpha=0.1, selection_alpha=0.4)
 u2.add_layout(color_bar, 'right') 
 #PCA
-p2.scatter('PC1', 'PC2', size=3, source=source, 
+p2.scatter('FA1', 'FA2', size=3, source=source, 
             fill_color=mapper,
             line_color=None, selection_color="orange", 
             alpha=0.6, nonselection_alpha=0.1, selection_alpha=0.4)
@@ -170,8 +166,8 @@ p2.add_layout(color_bar, 'right')
 volin = figure(plot_width=1000, plot_height=500, 
                tools = 'reset, pan,wheel_zoom, save')
 volin.patches(xs='xs', ys='ys', alpha=0.6, fill_color='color', line_color='black', source=source_vln)
-# volin.circle(x=jitter('xj', 0.2, distribution='normal'), y=jitter('yj', 0.2, distribution='normal'), 
-#              size=3, color='black', alpha=0.6, source=source) #
+#volin.circle(x=jitter('xj', 0.4), y='yj', size=2, color='black', alpha=0.4, source=source_vln)
+
 volin.toolbar.logo = None
 volin.yaxis.axis_label = "Expression"
 
@@ -184,12 +180,6 @@ volin.axis.minor_tick_line_color = None
 volin.axis.major_tick_line_color = None
 volin.axis.axis_line_color = None
 
-
-## dotplot
-
-
-
-
 def volin_change(gene, catogory, umis, bins=1000, cut=2):
     # update axis
     cats = sorted(catogory.unique())
@@ -197,14 +187,12 @@ def volin_change(gene, catogory, umis, bins=1000, cut=2):
     ## update data
     color = color_palette[:len(cats)]
     xs = []
-    ys = []
+    ys =  []
     xj = []
     yj = []
 
     for i, cat in zip(x_range, cats):
         umi = umis[catogory == cat]
-        xj += [i]*len(umi)
-        yj += umi.tolist()
         kde = gaussian_kde(umi) 
         # same default paramter same as seaborn.violinplot
         bw_used = kde.factor * umi.std(ddof=1) * cut
@@ -220,13 +208,15 @@ def volin_change(gene, catogory, umis, bins=1000, cut=2):
         xx = np.concatenate([x, x2[::-1]]) + i
         xs.append(xx)
         ys.append(yy)
+        #xj.append([i]*len(umi))
+        #yj.append(umi)
+      
+    source_vln.data = dict(xs=xs, ys=ys, color=color)
+    #source_vln.data = dict(xs=xs, ys=ys, color=color, xj=xj, yj=yj)
 
-    source.data.update(xj=xj, yj=yj)
-    source_vln.data.update(xs=xs, ys=ys, color=color)
     volin.xaxis.ticker = FixedTicker(ticks= x_range)
     volin.xaxis.major_label_overrides = {k: str(v) for k, v in zip(x_range, cats)}
     volin.title.text = gene
-
 
 # set up callbacks
 def gene_change():
@@ -246,13 +236,11 @@ def gene_change():
     u2.title.text = gene
     t2.title.text = gene   
     ## update source data
-    source.data.update(umis=umis,)   
+    source.data.update(umis=umis,)
     
     # update volin
     clusters = anndat.obs[dd]
     volin_change(gene, clusters, umis, bins=1000)
-
-
 
 
 # set up callbacks
@@ -283,7 +271,7 @@ sb = column(symbol, select, message)
 
 series_t = row(t1, t2, sb)
 series_u = row(u1, u2, volin)
-series_p = row(p1, p2)
+series_p = row(p1, p2, )
 layout = column(series_t, series_u, series_p,)
 
 # initialize
@@ -294,6 +282,3 @@ factor_change()
 curdoc().add_root(layout)
 #curdoc.theme = 'dark_minimal'
 curdoc().title = "ARPKD"
-
-
-
