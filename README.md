@@ -11,7 +11,7 @@ So, I setup a simplest web app using bokeh to help them. here is an example:
 
 1. run the app
 ```bash
-bokeh serve scvis
+bokeh serve scBokeh
 ```
 2. Enter gene names or select catogorical option to show.
 
@@ -27,4 +27,3 @@ bokeh serve scvis
 ### TODO
 I did not find a good example to generate voilinplot in Bokeh server application. 
 However, the amazing bokeh could do this easy!  
-I wish I had time to setup high level APIs for statistical plotting for Bokeh.
